@@ -44,5 +44,8 @@ jobs:
                - Hipótesis de causa raíz si es identificable a partir del código.
                - Próximos pasos sugeridos para implementar la solución (sin escribir el código todavía).
 
+               El comentario debe estar escrito en formato Markdown válido y bien interpretable por GitHub
+               (usa encabezados, listas y bloques de código con backticks o triple backtick según corresponda).
+
             Si el issue no tiene suficiente información para diagnosticar, dilo en el comentario y pide los
             detalles que faltan en lugar de inventar una causa.
