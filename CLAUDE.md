@@ -134,7 +134,7 @@ All tunable constants are at the top of `game.js`:
 | `COLS` | 10 | Board width; update canvas width too |
 | `ROWS` | 20 | Board height; update canvas height too |
 | `BLOCK` | 30 | Size in pixels per cell |
-| `COLORS` | Array | 7 hex colors (I=cyan, O=yellow, T=purple, S=green, Z=red, J=indigo, L=orange) |
+| `COLORS` | Array | 7 hex colors (I=cyan, O=yellow, T=purple, S=green, Z=red, J=pale blue, L=orange) |
 | `LINE_SCORES` | [0,100,300,500,800] | Points for 1/2/3/4 lines |
 
 Canvas dimensions in `index.html`:
