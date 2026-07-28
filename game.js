@@ -41,9 +41,24 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggleBtn = document.getElementById('theme-toggle');
 
+const overlayHighscoresBox = document.getElementById('overlay-highscores');
+const overlayHighscoresList = document.getElementById('overlay-highscores-list');
+const highscoresList = document.getElementById('highscores-list');
+const bestComboEl = document.getElementById('best-combo');
+const maxLinesEl = document.getElementById('max-lines');
+const resetScoresBtn = document.getElementById('reset-scores-btn');
+const nameEntry = document.getElementById('name-entry');
+const nameInput = document.getElementById('name-input');
+const saveScoreBtn = document.getElementById('save-score-btn');
+
 const THEME_KEY = 'tetris-theme';
+const HIGHSCORES_KEY = 'tetris-highscores';
+const BEST_COMBO_KEY = 'tetris-best-combo';
+const MAX_LINES_KEY = 'tetris-max-lines';
+const MAX_HIGHSCORES = 5;
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let combo, maxCombo;
 let gridColor = '#22222e';
 
 function createBoard() {
@@ -112,8 +127,11 @@ function clearLines() {
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    combo++;
+    maxCombo = Math.max(maxCombo, combo);
     updateHUD();
   }
+  return cleared;
 }
 
 function ghostY() {
@@ -141,7 +159,10 @@ function softDrop() {
 
 function lockPiece() {
   merge();
-  clearLines();
+  const cleared = clearLines();
+  if (cleared === 0) {
+    combo = 0;
+  }
   spawn();
 }
 
@@ -158,6 +179,98 @@ function updateHUD() {
   scoreEl.textContent = score.toLocaleString();
   linesEl.textContent = lines;
   levelEl.textContent = level;
+}
+
+function loadHighScores() {
+  try {
+    const raw = localStorage.getItem(HIGHSCORES_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function qualifiesForHighScore(scoreValue) {
+  const scores = loadHighScores();
+  if (scores.length < MAX_HIGHSCORES) return true;
+  const lowest = scores[scores.length - 1].score;
+  return scoreValue > lowest;
+}
+
+function saveHighScore(name, scoreValue, linesValue, comboValue) {
+  const scores = loadHighScores();
+  const entry = { name: name || 'AAA', score: scoreValue, lines: linesValue, combo: comboValue };
+  scores.push(entry);
+  scores.sort((a, b) => b.score - a.score);
+  const trimmed = scores.slice(0, MAX_HIGHSCORES);
+  localStorage.setItem(HIGHSCORES_KEY, JSON.stringify(trimmed));
+  return entry;
+}
+
+function loadBestCombo() {
+  return parseInt(localStorage.getItem(BEST_COMBO_KEY), 10) || 0;
+}
+
+function loadMaxLines() {
+  return parseInt(localStorage.getItem(MAX_LINES_KEY), 10) || 0;
+}
+
+function updateAllTimeStats() {
+  if (maxCombo > loadBestCombo()) {
+    localStorage.setItem(BEST_COMBO_KEY, String(maxCombo));
+  }
+  if (lines > loadMaxLines()) {
+    localStorage.setItem(MAX_LINES_KEY, String(lines));
+  }
+}
+
+function buildHighscoreRows(listEl, scores, highlightEntry) {
+  listEl.innerHTML = '';
+  if (scores.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'highscore-empty';
+    li.textContent = 'Sin récords';
+    listEl.appendChild(li);
+    return;
+  }
+  scores.forEach(entry => {
+    const li = document.createElement('li');
+    li.className = 'highscore-row';
+    if (
+      highlightEntry &&
+      entry.name === highlightEntry.name &&
+      entry.score === highlightEntry.score &&
+      entry.lines === highlightEntry.lines &&
+      entry.combo === highlightEntry.combo
+    ) {
+      li.classList.add('current-score');
+    }
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'highscore-name';
+    nameSpan.textContent = entry.name;
+    const scoreSpan = document.createElement('span');
+    scoreSpan.className = 'highscore-value';
+    scoreSpan.textContent = entry.score.toLocaleString();
+    li.appendChild(nameSpan);
+    li.appendChild(scoreSpan);
+    listEl.appendChild(li);
+  });
+}
+
+function renderHighScores(highlightEntry) {
+  const scores = loadHighScores();
+  buildHighscoreRows(highscoresList, scores, highlightEntry);
+  buildHighscoreRows(overlayHighscoresList, scores, highlightEntry);
+  bestComboEl.textContent = loadBestCombo();
+  maxLinesEl.textContent = loadMaxLines();
+}
+
+function submitHighScore() {
+  const name = (nameInput.value || '').trim().slice(0, 10) || 'AAA';
+  const entry = saveHighScore(name, score, lines, maxCombo);
+  nameEntry.classList.add('hidden');
+  renderHighScores(entry);
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
@@ -228,6 +341,19 @@ function endGame() {
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
+
+  updateAllTimeStats();
+  overlayHighscoresBox.classList.remove('hidden');
+
+  if (qualifiesForHighScore(score)) {
+    nameEntry.classList.remove('hidden');
+    nameInput.value = '';
+    nameInput.focus();
+  } else {
+    nameEntry.classList.add('hidden');
+  }
+
+  renderHighScores();
 }
 
 function togglePause() {
@@ -240,6 +366,8 @@ function togglePause() {
     cancelAnimationFrame(animId);
     overlayTitle.textContent = 'PAUSA';
     overlayScore.textContent = '';
+    overlayHighscoresBox.classList.add('hidden');
+    nameEntry.classList.add('hidden');
     overlay.classList.remove('hidden');
   }
 }
@@ -265,6 +393,8 @@ function init() {
   score = 0;
   lines = 0;
   level = 1;
+  combo = 0;
+  maxCombo = 0;
   paused = false;
   gameOver = false;
   dropInterval = 1000;
@@ -274,6 +404,9 @@ function init() {
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  overlayHighscoresBox.classList.add('hidden');
+  nameEntry.classList.add('hidden');
+  renderHighScores();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
@@ -304,6 +437,24 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+saveScoreBtn.addEventListener('click', submitHighScore);
+
+nameInput.addEventListener('keydown', e => {
+  e.stopPropagation();
+  if (e.code === 'Enter') {
+    e.preventDefault();
+    submitHighScore();
+  }
+});
+
+resetScoresBtn.addEventListener('click', () => {
+  if (!confirm('¿Seguro que quieres borrar todos los récords?')) return;
+  localStorage.removeItem(HIGHSCORES_KEY);
+  localStorage.removeItem(BEST_COMBO_KEY);
+  localStorage.removeItem(MAX_LINES_KEY);
+  renderHighScores();
+});
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
