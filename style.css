@@ -96,6 +96,25 @@ body {
   border-color: var(--accent);
 }
 
+.skin-select {
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 6px;
+  color: var(--kbd-text);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 6px 8px;
+  height: 32px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.skin-select:hover,
+.skin-select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
 .game-container {
   display: flex;
   gap: 20px;
@@ -226,4 +245,10 @@ kbd {
 
 #restart-btn:hover {
   background: var(--restart-hover);
+}
+
+/* ---- Skin: neon ---- */
+[data-skin="neon"] #board,
+[data-skin="neon"] #next-canvas {
+  background: #000;
 }
